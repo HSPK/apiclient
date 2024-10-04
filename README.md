@@ -1,6 +1,6 @@
-# API Client
+# Fast Client
 
-Simple API Client.
+Simple API Client. Fast and easy to use.
 
 # Features
 
