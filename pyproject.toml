@@ -1,8 +1,5 @@
 [tool.poetry]
-name = "fastclient"
-packages = [
-    { include = "fastclient", from = "." }
-]
+name = "uclient"
 version = "0.1.0"
 description = ""
 authors = ["HSPK <whxway@whu.edu.cn>"]
