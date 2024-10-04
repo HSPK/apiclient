@@ -1,26 +1,27 @@
 import inspect
-from typing import TYPE_CHECKING, Dict, Type, TypeVar, Union, cast, AsyncGenerator
+import json
+from typing import TYPE_CHECKING, AsyncGenerator, Dict, Type, TypeVar, Union, cast
 
 import anyio
 import httpx
 import pydantic
 from httpx import URL
 from loguru import logger
-import json
+
 from ._constants import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_TIMEOUT,
     INITIAL_RETRY_DELAY,
     MAX_RETRY_DELAY,
 )
-from .types.request import FinalRequestOptions, RequestOptions
 from .types.errors import (
+    STATUS_CODE,
     APIConnectionError,
     APIException,
     APITimeoutError,
     BadResponseError,
-    STATUS_CODE,
 )
+from .types.request import FinalRequestOptions, RequestOptions
 
 if TYPE_CHECKING:
     from .types.response import BaseResponse
@@ -50,9 +51,7 @@ class AsyncAPIClient:
         proxies: Union[None, httpx._types.ProxyTypes] = None,
         auth_headers: Union[None, Dict] = None,
     ):
-        self._client = httpx.AsyncClient(
-            base_url=base_url, timeout=timeout, proxies=proxies
-        )
+        self._client = httpx.AsyncClient(base_url=base_url, timeout=timeout, proxies=proxies)
         self.max_retries = max_retries
         self.auth_headers = auth_headers or {}
 
@@ -108,9 +107,7 @@ class AsyncAPIClient:
         if body["code"] == STATUS_CODE.API_CONNECTION_ERROR:
             raise APIConnectionError(context=body) from e
         if body["code"] != STATUS_CODE.SUCCESS:
-            raise APIException(
-                code=body["code"], msg=body.get("msg", ""), context=body
-            ) from e
+            raise APIException(code=body["code"], msg=body.get("msg", ""), context=body) from e
 
     async def _retry_request(
         self,
@@ -124,9 +121,7 @@ class AsyncAPIClient:
         else:
             logger.debug(f"{remaining} retries left")
         max_retries = options.get_max_retries(self.max_retries)
-        retry_timeout = min(
-            INITIAL_RETRY_DELAY * 2 ** (max_retries - remaining), MAX_RETRY_DELAY
-        )
+        retry_timeout = min(INITIAL_RETRY_DELAY * 2 ** (max_retries - remaining), MAX_RETRY_DELAY)
         logger.info(f"Retrying {options.url} in {retry_timeout} seconds")
         await anyio.sleep(retry_timeout)
 
@@ -138,10 +133,7 @@ class AsyncAPIClient:
 
     def _should_retry(self, response: httpx.Response) -> bool:
         logger.debug(f"Server error {response.status_code}")
-        if (
-            response.status_code >= 500
-            or response.status_code == STATUS_CODE.API_TIMEOUT
-        ):
+        if response.status_code >= 500 or response.status_code == STATUS_CODE.API_TIMEOUT:
             return True
         return False
 
@@ -206,12 +198,8 @@ class AsyncAPIClient:
                         data = chunk[len(options.stream_prefix) :]
                         self._raise_api_exception_from_text(data)
                         try:
-                            if inspect.isclass(cast_to) and issubclass(
-                                cast_to, pydantic.BaseModel
-                            ):
-                                yield cast(
-                                    ResponseT, cast_to.model_validate(json.loads(data))
-                                )
+                            if inspect.isclass(cast_to) and issubclass(cast_to, pydantic.BaseModel):
+                                yield cast(ResponseT, cast_to.model_validate(json.loads(data)))
                             else:
                                 yield cast(ResponseT, json.loads(data))
                         except Exception as e:
@@ -257,9 +245,7 @@ class AsyncAPIClient:
         cast_to: Type[ResponseT],
         options: RequestOptions = {},
     ) -> AsyncGenerator[ResponseT, None]:
-        opts = FinalRequestOptions(
-            method="post", json_data=body, url=path, stream=True, **options
-        )
+        opts = FinalRequestOptions(method="post", json_data=body, url=path, stream=True, **options)
         return await self.request(cast_to, opts)
 
     async def put(

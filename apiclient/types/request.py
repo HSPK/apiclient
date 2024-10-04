@@ -1,8 +1,9 @@
 from typing import Dict, Iterable, Union
-from ._base import BaseModel
-from typing_extensions import TypedDict
+
 import httpx
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict
+
+from ._base import BaseModel
 
 
 class RequestOptions(TypedDict):
